@@ -26,8 +26,8 @@ class ProductionSeeder extends Seeder
             return;
         }
 
-        $email = env('SUPERADMIN_EMAIL');
-        $password = env('SUPERADMIN_PASSWORD');
+        $email = config('superadmin.email');
+        $password = config('superadmin.password');
 
         if (! $email || ! $password) {
             throw new \RuntimeException(
@@ -36,7 +36,7 @@ class ProductionSeeder extends Seeder
         }
 
         $superadmin = User::create([
-            'name' => env('SUPERADMIN_NAME', 'Super Admin'),
+            'name' => config('superadmin.name'),
             'email' => $email,
             'password' => Hash::make($password),
         ]);

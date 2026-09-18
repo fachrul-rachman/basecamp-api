@@ -9,7 +9,7 @@ class UserPolicy
 {
     public function viewAny(User $actor): bool
     {
-        return $actor->hasAnyRole([Role::ADMIN, Role::DIRECTOR, Role::ISO, Role::MANAGER]);
+        return $actor->hasAnyRole([Role::SUPERADMIN, Role::ADMIN, Role::DIRECTOR, Role::ISO, Role::MANAGER]);
     }
 
     public function view(User $actor, User $user): bool
@@ -18,7 +18,7 @@ class UserPolicy
             return true;
         }
 
-        if ($actor->hasAnyRole([Role::ADMIN, Role::DIRECTOR, Role::ISO])) {
+        if ($actor->hasAnyRole([Role::SUPERADMIN, Role::ADMIN, Role::DIRECTOR, Role::ISO])) {
             return true;
         }
 
@@ -33,18 +33,21 @@ class UserPolicy
 
     public function create(User $actor): bool
     {
-        return $actor->hasRole(Role::ADMIN);
+        // SuperAdmin needs this to CRUD Admin-role accounts (docs/07-AUTHORIZATION.md
+        // §2) — the actual grant/revoke of the Admin/SuperAdmin role itself is
+        // separately restricted to SuperAdmin in UserService::syncRoles().
+        return $actor->hasAnyRole([Role::SUPERADMIN, Role::ADMIN]);
     }
 
     public function update(User $actor, User $user): bool
     {
         // SuperAdmin needs this to reach the protected-role-assignment check
         // in UserService (see docs/07-AUTHORIZATION.md §2, §3).
-        return $actor->hasAnyRole([Role::ADMIN, Role::SUPERADMIN]);
+        return $actor->hasAnyRole([Role::SUPERADMIN, Role::ADMIN]);
     }
 
     public function delete(User $actor, User $user): bool
     {
-        return $actor->hasRole(Role::ADMIN);
+        return $actor->hasAnyRole([Role::SUPERADMIN, Role::ADMIN]);
     }
 }
