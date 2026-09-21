@@ -168,3 +168,49 @@ test('work-items/today includes a period-based item currently inside its window'
     $ids = collect($response->json('data'))->pluck('id');
     expect($ids->all())->toBe([$item->id]);
 });
+
+test('work-items/today includes an event-type item with no operational_date or period', function () {
+    [, $checklist] = makeTaskWithChecklist(['schedule_type' => 'event']);
+    $pic = makeUserWithRoles([Role::PIC]);
+
+    $item = WorkItem::create([
+        'task_id' => $checklist->task_id,
+        'task_checklist_id' => $checklist->id,
+        'responsible_department_id' => $checklist->target_department_id,
+        'assignee_id' => $pic->id,
+        'operational_date' => null,
+        'available_at' => now(),
+        'deadline_at' => now()->addHours(24),
+        'failure_at' => now()->addHours(24),
+    ]);
+
+    $response = $this->actingAs($pic, 'sanctum')->getJson('/api/v1/work-items/today');
+
+    $response->assertOk();
+    $ids = collect($response->json('data'))->pluck('id');
+    expect($ids->all())->toBe([$item->id]);
+});
+
+test('work-items/today excludes a completed, failed, or cancelled event-type item', function () {
+    [, $checklist] = makeTaskWithChecklist(['schedule_type' => 'event']);
+    $pic = makeUserWithRoles([Role::PIC]);
+
+    foreach ([WorkItem::EXECUTION_COMPLETED, WorkItem::EXECUTION_FAILED, WorkItem::EXECUTION_CANCELLED] as $status) {
+        WorkItem::create([
+            'task_id' => $checklist->task_id,
+            'task_checklist_id' => $checklist->id,
+            'responsible_department_id' => $checklist->target_department_id,
+            'assignee_id' => $pic->id,
+            'operational_date' => null,
+            'available_at' => now(),
+            'deadline_at' => now()->addHours(24),
+            'failure_at' => now()->addHours(24),
+            'execution_status' => $status,
+        ]);
+    }
+
+    $response = $this->actingAs($pic, 'sanctum')->getJson('/api/v1/work-items/today');
+
+    $response->assertOk();
+    expect($response->json('data'))->toBeEmpty();
+});

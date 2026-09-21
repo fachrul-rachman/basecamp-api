@@ -27,7 +27,7 @@ class TaskTemplateController extends Controller
         $this->authorize('viewAny', TaskTemplate::class);
 
         $actor = $request->user();
-        $query = TaskTemplate::query()->with('departments');
+        $query = TaskTemplate::query()->with(['departments', 'checklists.referenceEvidence']);
 
         if (! $actor->hasAnyRole([Role::ADMIN, Role::DIRECTOR, Role::ISO])) {
             $departmentIds = $actor->departments->pluck('id');

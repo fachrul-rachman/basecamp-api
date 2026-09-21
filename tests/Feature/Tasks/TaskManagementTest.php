@@ -35,6 +35,32 @@ test('manager can create a manual task with a checklist in their own department'
         ->assertJsonPath('data.checklists.0.target_department_id', $department->id);
 });
 
+test('the task list includes each task\'s checklists', function () {
+    $department = Department::factory()->create();
+    $manager = makeManager($department);
+
+    $created = $this->actingAs($manager, 'sanctum')->postJson('/api/v1/tasks', [
+        'owner_department_id' => $department->id,
+        'title' => 'Toilet Cleaning - Building A',
+        'starts_at' => now()->toIso8601String(),
+        'ends_at' => now()->addDay()->toIso8601String(),
+        'checklists' => [
+            [
+                'title' => 'Mop floor',
+                'schedule_type' => 'daily',
+                'schedule_config' => ['start_time' => '08:00', 'end_time' => '09:00'],
+            ],
+        ],
+    ])->json('data.id');
+
+    $response = $this->actingAs($manager, 'sanctum')->getJson('/api/v1/tasks');
+
+    $response->assertOk();
+    $found = collect($response->json('data'))->firstWhere('id', $created);
+    expect($found['checklists'])->toHaveCount(1);
+    expect($found['checklists'][0]['title'])->toBe('Mop floor');
+});
+
 test('manager cannot create a task for a department they do not manage', function () {
     $ownDepartment = Department::factory()->create();
     $otherDepartment = Department::factory()->create();

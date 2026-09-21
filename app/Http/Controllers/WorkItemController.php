@@ -77,7 +77,16 @@ class WorkItemController extends Controller
                 ->orWhere(fn ($pq) => $pq->whereNotNull('period_start')
                     ->whereDate('period_start', '<=', $today)
                     ->whereDate('period_end', '>=', $today))
-                ->orWhere(fn ($pq) => $pq->whereNotNull('period_start')->whereDate('period_start', $tomorrow));
+                ->orWhere(fn ($pq) => $pq->whereNotNull('period_start')->whereDate('period_start', $tomorrow))
+                // Event-type items (WorkItemGenerator::generateForEvent) have
+                // neither an operational_date nor a period — they're always
+                // immediately actionable once assigned, not tied to a date,
+                // so (unlike the branches above) they never age out on their
+                // own; excluding terminal statuses here is what keeps a
+                // completed/failed/cancelled one from lingering forever.
+                ->orWhere(fn ($pq) => $pq->whereNull('operational_date')
+                    ->whereNull('period_start')
+                    ->whereNotIn('execution_status', WorkItem::TERMINAL_STATUSES));
         });
 
         return WorkItemResource::collection($query->with(['task', 'taskChecklist', 'submission.evidence'])->get());

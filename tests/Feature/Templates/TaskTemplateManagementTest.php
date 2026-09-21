@@ -114,6 +114,24 @@ test('a department-restricted template is hidden from unrelated departments', fu
     expect(collect($response->json('data'))->pluck('id'))->not->toContain($restrictedTemplate->id);
 });
 
+test('the template list includes each template\'s checklists', function () {
+    $template = TaskTemplate::factory()->create();
+    $template->checklists()->create([
+        'title' => 'Mop the floor',
+        'schedule_type' => 'daily',
+        'schedule_config' => ['start_time' => '08:00', 'end_time' => '09:00'],
+        'evidence_min_count' => 1,
+    ]);
+
+    $admin = makeUserWithRoles([Role::ADMIN]);
+    $response = $this->actingAs($admin, 'sanctum')->getJson('/api/v1/templates');
+
+    $response->assertOk();
+    $found = collect($response->json('data'))->firstWhere('id', $template->id);
+    expect($found['checklists'])->toHaveCount(1);
+    expect($found['checklists'][0]['title'])->toBe('Mop the floor');
+});
+
 test('inactive templates are hidden from non-admin roles', function () {
     $inactive = TaskTemplate::factory()->create(['is_active' => false]);
     $pic = makeUserWithRoles([Role::PIC]);

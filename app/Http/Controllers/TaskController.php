@@ -25,7 +25,7 @@ class TaskController extends Controller
         $this->authorize('viewAny', Task::class);
 
         $actor = $request->user();
-        $query = Task::query()->with('ownerDepartment');
+        $query = Task::query()->with(['ownerDepartment', 'checklists.referenceEvidence', 'checklists.departmentRequests']);
 
         if (! $actor->hasAnyRole([Role::ADMIN, Role::DIRECTOR, Role::ISO])) {
             $departmentIds = $actor->departments->pluck('id');

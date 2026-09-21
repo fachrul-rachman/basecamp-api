@@ -24,12 +24,6 @@ class EvaluateWorkItems extends Command
 
     protected $description = 'Mark overdue Work Items late (past deadline_at) or failed (past failure_at), and open Findings for them.';
 
-    private const TERMINAL_STATUSES = [
-        WorkItem::EXECUTION_COMPLETED,
-        WorkItem::EXECUTION_CANCELLED,
-        WorkItem::EXECUTION_FAILED,
-    ];
-
     public function handle(FindingService $findings, NotificationDispatcher $notifications): int
     {
         $now = now();
@@ -37,7 +31,7 @@ class EvaluateWorkItems extends Command
         $newlyFailed = WorkItem::query()
             ->whereNotNull('failure_at')
             ->where('failure_at', '<=', $now)
-            ->whereNotIn('execution_status', self::TERMINAL_STATUSES)
+            ->whereNotIn('execution_status', WorkItem::TERMINAL_STATUSES)
             ->get();
 
         foreach ($newlyFailed as $item) {
@@ -57,7 +51,7 @@ class EvaluateWorkItems extends Command
             ->where('deadline_at', '<=', $now)
             ->where('failure_at', '>', $now)
             ->where('compliance_status', WorkItem::COMPLIANCE_PENDING)
-            ->whereNotIn('execution_status', self::TERMINAL_STATUSES)
+            ->whereNotIn('execution_status', WorkItem::TERMINAL_STATUSES)
             ->get();
 
         foreach ($newlyLate as $item) {

@@ -10,12 +10,6 @@ use Illuminate\Support\Carbon;
 
 class WorkItemResource extends JsonResource
 {
-    private const TERMINAL_STATUSES = [
-        WorkItem::EXECUTION_COMPLETED,
-        WorkItem::EXECUTION_FAILED,
-        WorkItem::EXECUTION_CANCELLED,
-    ];
-
     public function toArray(Request $request): array
     {
         $now = Carbon::now();
@@ -98,7 +92,7 @@ class WorkItemResource extends JsonResource
 
     private function canSubmit(Carbon $now): bool
     {
-        if (in_array($this->execution_status, self::TERMINAL_STATUSES, true)) {
+        if (in_array($this->execution_status, WorkItem::TERMINAL_STATUSES, true)) {
             return false;
         }
 
@@ -119,7 +113,7 @@ class WorkItemResource extends JsonResource
             return false;
         }
 
-        if (in_array($this->execution_status, self::TERMINAL_STATUSES, true)) {
+        if (in_array($this->execution_status, WorkItem::TERMINAL_STATUSES, true)) {
             return $this->compliance_status === WorkItem::COMPLIANCE_LATE;
         }
 

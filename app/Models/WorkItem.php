@@ -48,6 +48,12 @@ class WorkItem extends Model
 
     public const EXECUTION_RESCHEDULED = 'rescheduled';
 
+    public const TERMINAL_STATUSES = [
+        self::EXECUTION_COMPLETED,
+        self::EXECUTION_CANCELLED,
+        self::EXECUTION_FAILED,
+    ];
+
     public const COMPLIANCE_PENDING = 'pending';
 
     public const COMPLIANCE_ON_TIME = 'on_time';
