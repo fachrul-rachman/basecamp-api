@@ -5,6 +5,11 @@ use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Carbon;
 
 test('work-items:generate with no --date option generates for both today and tomorrow', function () {
+    // Frozen to a morning hour so today's default 08:00-17:00 window is
+    // still open regardless of what time this suite actually runs at
+    // (the generator now skips creating an already-elapsed today window).
+    Carbon::setTestNow(Carbon::now()->startOfDay()->addHours(9));
+
     [, $checklistToday] = makeTaskWithChecklist(['schedule_type' => 'daily'], ['attributes' => ['starts_at' => now()->subDay()]]);
     [, $checklistTomorrow] = makeTaskWithChecklist(['schedule_type' => 'daily'], ['attributes' => ['starts_at' => now()]]);
 
@@ -12,6 +17,8 @@ test('work-items:generate with no --date option generates for both today and tom
 
     expect(WorkItem::where('task_checklist_id', $checklistToday->id)->whereDate('operational_date', now()->toDateString())->exists())->toBeTrue();
     expect(WorkItem::where('task_checklist_id', $checklistTomorrow->id)->whereDate('operational_date', now()->addDay()->toDateString())->exists())->toBeTrue();
+
+    Carbon::setTestNow();
 });
 
 test('work-items:generate --date still generates only for the given date', function () {
