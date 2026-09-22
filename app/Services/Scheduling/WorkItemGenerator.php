@@ -44,7 +44,7 @@ class WorkItemGenerator
         TaskChecklist::query()
             ->where('is_active', true)
             ->whereHas('task', fn ($q) => $q->where('status', Task::STATUS_ACTIVE))
-            ->with(['task', 'departmentRequests'])
+            ->with(['task', 'departmentRequests', 'assigneeOverrides'])
             ->chunkById(100, function ($checklists) use ($date, &$count) {
                 foreach ($checklists as $checklist) {
                     $count += $this->generateForChecklist($checklist, $date);
@@ -260,6 +260,18 @@ class WorkItemGenerator
             $checklist->schedule_config['start_time'],
             $checklist->schedule_config['end_time']
         );
+
+        // The generator now runs every 15 minutes and checks today as
+        // well as tomorrow (not just a single nightly run for tomorrow),
+        // so a Checklist created partway through today could otherwise
+        // get a Work Item whose deadline has already passed at the
+        // moment of creation — the next evaluation run would then mark
+        // it late and open a real Finding against a PIC who never had a
+        // chance to act on it. Skip creating it entirely in that case;
+        // a window still open (even partially) still generates normally.
+        if ($window['deadline_at']->isPast()) {
+            return false;
+        }
 
         $item = WorkItem::create([
             'task_id' => $checklist->task_id,

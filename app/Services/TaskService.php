@@ -57,7 +57,7 @@ class TaskService
             $this->auditLog->record($actor, 'task.created', 'Task', $task->id, ['template_id' => $template?->id]);
 
             return [
-                'task' => $task->load(['ownerDepartment', 'sourceTemplate', 'checklists.referenceEvidence', 'checklists.departmentRequests']),
+                'task' => $task->load(['ownerDepartment', 'sourceTemplate', 'checklists.referenceEvidence', 'checklists.departmentRequests', 'checklists.assigneeOverrides']),
                 'warnings' => $warnings,
             ];
         });
@@ -68,7 +68,7 @@ class TaskService
         $task->fill(array_intersect_key($data, array_flip(['title', 'description', 'overall_deadline_at'])))->save();
         $this->auditLog->record($actor, 'task.updated', 'Task', $task->id);
 
-        return $task->fresh(['ownerDepartment', 'checklists']);
+        return $task->fresh(['ownerDepartment', 'checklists.departmentRequests', 'checklists.assigneeOverrides']);
     }
 
     /**
@@ -102,7 +102,7 @@ class TaskService
 
             $this->auditLog->record($actor, 'task.rescheduled', 'Task', $task->id, ['reason' => $reason]);
 
-            return ['task' => $task->fresh(['ownerDepartment', 'checklists']), 'warnings' => $warnings];
+            return ['task' => $task->fresh(['ownerDepartment', 'checklists.departmentRequests', 'checklists.assigneeOverrides']), 'warnings' => $warnings];
         });
     }
 
