@@ -24,7 +24,7 @@ class WorkItemAssignmentService
             ]);
         }
 
-        $this->assertPicBelongsToResponsibleDepartment($workItem, $pic);
+        $this->assertPicBelongsToDepartment($workItem->responsible_department_id, $pic);
 
         return DB::transaction(function () use ($actor, $workItem, $pic, $reason) {
             $previousAssigneeId = $workItem->assignee_id;
@@ -51,10 +51,10 @@ class WorkItemAssignmentService
         });
     }
 
-    private function assertPicBelongsToResponsibleDepartment(WorkItem $workItem, User $pic): void
+    public function assertPicBelongsToDepartment(string $departmentId, User $pic): void
     {
         $isPic = $pic->hasRole(Role::PIC);
-        $inDepartment = $pic->departments->pluck('id')->contains($workItem->responsible_department_id);
+        $inDepartment = $pic->departments->pluck('id')->contains($departmentId);
 
         if (! $isPic || ! $inDepartment) {
             throw ValidationException::withMessages([
