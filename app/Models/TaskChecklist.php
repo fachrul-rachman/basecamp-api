@@ -21,6 +21,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'allow_camera',
     'works_on_holidays',
     'is_active',
+    'default_assignee_id',
 ])]
 class TaskChecklist extends Model
 {
@@ -76,5 +77,29 @@ class TaskChecklist extends Model
     public function departmentRequests(): HasMany
     {
         return $this->hasMany(DepartmentRequest::class);
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function defaultAssignee(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'default_assignee_id');
+    }
+
+    /**
+     * @return HasMany<ChecklistAssigneeOverride, $this>
+     */
+    public function assigneeOverrides(): HasMany
+    {
+        return $this->hasMany(ChecklistAssigneeOverride::class);
+    }
+
+    /**
+     * @return HasMany<WorkItem, $this>
+     */
+    public function workItems(): HasMany
+    {
+        return $this->hasMany(WorkItem::class);
     }
 }
