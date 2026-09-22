@@ -14,11 +14,18 @@ class GenerateWorkItems extends Command
 
     public function handle(WorkItemGenerator $generator): int
     {
-        $date = $this->option('date') ? Carbon::parse($this->option('date')) : now()->addDay();
+        if ($this->option('date')) {
+            $date = Carbon::parse($this->option('date'));
+            $count = $generator->generateForDate($date);
+            $this->info("Generated {$count} work item(s) for {$date->toDateString()}.");
 
-        $count = $generator->generateForDate($date);
+            return self::SUCCESS;
+        }
 
-        $this->info("Generated {$count} work item(s) for {$date->toDateString()}.");
+        $today = now();
+        $tomorrow = now()->addDay();
+        $count = $generator->generateForDate($today) + $generator->generateForDate($tomorrow);
+        $this->info("Generated {$count} work item(s) for {$today->toDateString()} and {$tomorrow->toDateString()}.");
 
         return self::SUCCESS;
     }

@@ -8,9 +8,11 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-// H-1 generation: run once a day, well before midnight, so tomorrow's
-// preview is ready (docs/02-BUSINESS-RULES.md §1, docs/08-BACKEND-ARCHITECTURE.md §7).
-Schedule::command('work-items:generate')->dailyAt('20:00')->withoutOverlapping();
+// H-1 generation: runs every 15 minutes and checks today + tomorrow, so
+// a Checklist created at any time of day is picked up within minutes
+// instead of waiting for a single daily cutoff
+// (docs/superpowers/specs/2026-09-22-checklist-assignment-and-generator-frequency-design.md).
+Schedule::command('work-items:generate')->everyFifteenMinutes()->withoutOverlapping();
 
 // Passive late/failed evaluation for Work Items the PIC never finished
 // (docs/02-BUSINESS-RULES.md §3, Phase 6 acceptance).
