@@ -101,10 +101,10 @@ class ChecklistAssignmentService
             return $request->status === DepartmentRequest::STATUS_ASSIGNED ? $request->assigned_pic_id : null;
         }
 
-        $override = $checklist->assigneeOverrides()
-            ->whereDate('starts_at', '<=', $date->toDateString())
-            ->whereDate('ends_at', '>=', $date->toDateString())
-            ->first();
+        $override = $checklist->assigneeOverrides->first(
+            fn ($candidate) => $candidate->starts_at->toDateString() <= $date->toDateString()
+                && $candidate->ends_at->toDateString() >= $date->toDateString()
+        );
 
         return $override?->assignee_id ?? $checklist->default_assignee_id;
     }
