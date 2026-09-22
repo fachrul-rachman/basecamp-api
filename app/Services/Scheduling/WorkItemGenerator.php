@@ -8,6 +8,7 @@ use App\Models\Task;
 use App\Models\TaskChecklist;
 use App\Models\WorkItem;
 use App\Notifications\WorkItemEvent;
+use App\Services\ChecklistAssignmentService;
 use App\Services\NotificationDispatcher;
 use App\Support\Scheduling\ScheduleType;
 use Carbon\CarbonInterface;
@@ -29,6 +30,7 @@ class WorkItemGenerator
     public function __construct(
         private OperationalWindowResolver $windowResolver,
         private NotificationDispatcher $notifications,
+        private ChecklistAssignmentService $assignments,
     ) {}
 
     /**
@@ -93,7 +95,7 @@ class WorkItemGenerator
             return 0;
         }
 
-        [$assigneeId, $departmentRequestId, $eligible] = $this->resolveResponsibility($checklist);
+        [$assigneeId, $departmentRequestId, $eligible] = $this->resolveResponsibility($checklist, $date);
 
         if (! $eligible) {
             return 0;
@@ -118,12 +120,16 @@ class WorkItemGenerator
     /**
      * @return array{0: ?string, 1: ?string, 2: bool} [assigneeId, departmentRequestId, eligible]
      */
-    private function resolveResponsibility(TaskChecklist $checklist): array
+    private function resolveResponsibility(TaskChecklist $checklist, CarbonInterface $date): array
     {
         $request = $checklist->departmentRequests->first();
 
         if (! $request) {
-            return [null, null, true];
+            if ($checklist->schedule_type === ScheduleType::WeeklyQuota->value) {
+                return [null, null, true];
+            }
+
+            return [$this->assignments->resolveEffectiveAssignee($checklist, $date), null, true];
         }
 
         // Cross-department work only generates once the target department
