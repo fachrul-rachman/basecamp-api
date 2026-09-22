@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Services\ChecklistAssignmentService;
 use App\Support\EvidenceDisk;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -23,6 +24,9 @@ class TaskChecklistResource extends JsonResource
             'allow_camera' => $this->allow_camera,
             'works_on_holidays' => $this->works_on_holidays,
             'is_active' => $this->is_active,
+            'default_assignee_id' => $this->default_assignee_id,
+            'effective_assignee_id' => app(ChecklistAssignmentService::class)
+                ->resolveEffectiveAssignee($this->resource, now()),
             'reference_evidence' => $this->whenLoaded('referenceEvidence', fn () => $this->referenceEvidence->map(fn ($evidence) => [
                 'id' => $evidence->id,
                 'url' => EvidenceDisk::url($evidence->storage_key),

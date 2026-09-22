@@ -59,6 +59,8 @@ Route::prefix('v1')->group(function () {
         Route::post('tasks/{task}/checklists', [TaskController::class, 'storeChecklist']);
         Route::patch('tasks/{task}/checklists/{checklist}', [TaskController::class, 'updateChecklist']);
         Route::delete('tasks/{task}/checklists/{checklist}', [TaskController::class, 'destroyChecklist']);
+        Route::post('tasks/{task}/checklists/{checklist}/assignee', [TaskController::class, 'assignChecklist']);
+        Route::post('tasks/{task}/checklists/{checklist}/assignee-overrides', [TaskController::class, 'storeChecklistAssigneeOverride']);
 
         Route::get('department-requests', [DepartmentRequestController::class, 'index']);
         Route::get('department-requests/{departmentRequest}', [DepartmentRequestController::class, 'show']);

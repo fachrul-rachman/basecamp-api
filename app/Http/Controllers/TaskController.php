@@ -3,29 +3,37 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\RescheduleTaskRequest;
+use App\Http\Requests\StoreChecklistAssigneeOverrideRequest;
+use App\Http\Requests\StoreChecklistAssigneeRequest;
 use App\Http\Requests\StoreTaskChecklistRequest;
 use App\Http\Requests\StoreTaskRequest;
 use App\Http\Requests\UpdateTaskChecklistRequest;
 use App\Http\Requests\UpdateTaskRequest;
+use App\Http\Resources\ChecklistAssigneeOverrideResource;
 use App\Http\Resources\TaskChecklistResource;
 use App\Http\Resources\TaskResource;
 use App\Models\Role;
 use App\Models\Task;
 use App\Models\TaskChecklist;
+use App\Models\User;
+use App\Services\ChecklistAssignmentService;
 use App\Services\TaskService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
 class TaskController extends Controller
 {
-    public function __construct(private TaskService $tasks) {}
+    public function __construct(
+        private TaskService $tasks,
+        private ChecklistAssignmentService $assignments,
+    ) {}
 
     public function index(Request $request)
     {
         $this->authorize('viewAny', Task::class);
 
         $actor = $request->user();
-        $query = Task::query()->with(['ownerDepartment', 'checklists.referenceEvidence', 'checklists.departmentRequests']);
+        $query = Task::query()->with(['ownerDepartment', 'checklists.referenceEvidence', 'checklists.departmentRequests', 'checklists.assigneeOverrides']);
 
         if (! $actor->hasAnyRole([Role::ADMIN, Role::DIRECTOR, Role::ISO])) {
             $departmentIds = $actor->departments->pluck('id');
@@ -77,7 +85,7 @@ class TaskController extends Controller
         $this->authorize('view', $task);
 
         return new TaskResource($task->load([
-            'ownerDepartment', 'sourceTemplate', 'checklists.referenceEvidence', 'checklists.departmentRequests',
+            'ownerDepartment', 'sourceTemplate', 'checklists.referenceEvidence', 'checklists.departmentRequests', 'checklists.assigneeOverrides',
         ]));
     }
 
@@ -115,7 +123,7 @@ class TaskController extends Controller
         $this->authorize('view', $task);
 
         return TaskChecklistResource::collection(
-            $task->checklists()->with(['referenceEvidence', 'departmentRequests'])->get()
+            $task->checklists()->with(['referenceEvidence', 'departmentRequests', 'assigneeOverrides'])->get()
         );
     }
 
@@ -123,7 +131,7 @@ class TaskController extends Controller
     {
         [$checklist, $warnings] = $this->tasks->addChecklist($task, $request->validated());
 
-        return (new TaskChecklistResource($checklist->load(['referenceEvidence', 'departmentRequests'])))
+        return (new TaskChecklistResource($checklist->load(['referenceEvidence', 'departmentRequests', 'assigneeOverrides'])))
             ->additional(['meta' => ['warnings' => $warnings]])
             ->response()->setStatusCode(201);
     }
@@ -134,7 +142,7 @@ class TaskController extends Controller
 
         $checklist->update($request->validated());
 
-        return new TaskChecklistResource($checklist->fresh(['referenceEvidence', 'departmentRequests']));
+        return new TaskChecklistResource($checklist->fresh(['referenceEvidence', 'departmentRequests', 'assigneeOverrides']));
     }
 
     public function destroyChecklist(Request $request, Task $task, TaskChecklist $checklist)
@@ -145,5 +153,31 @@ class TaskController extends Controller
         $this->tasks->deactivateChecklist($checklist);
 
         return response()->json(['data' => ['message' => 'Checklist deactivated.']]);
+    }
+
+    public function assignChecklist(StoreChecklistAssigneeRequest $request, Task $task, TaskChecklist $checklist)
+    {
+        abort_if($checklist->task_id !== $task->id, 404);
+
+        $pic = User::findOrFail($request->validated('pic_id'));
+        $checklist = $this->assignments->setDefaultAssignee($request->user(), $checklist, $pic);
+
+        return new TaskChecklistResource($checklist->load(['referenceEvidence', 'departmentRequests', 'assigneeOverrides']));
+    }
+
+    public function storeChecklistAssigneeOverride(StoreChecklistAssigneeOverrideRequest $request, Task $task, TaskChecklist $checklist)
+    {
+        abort_if($checklist->task_id !== $task->id, 404);
+
+        $pic = User::findOrFail($request->validated('pic_id'));
+        $override = $this->assignments->createTemporaryOverride(
+            $request->user(),
+            $checklist,
+            $pic,
+            Carbon::parse($request->validated('starts_at')),
+            Carbon::parse($request->validated('ends_at'))
+        );
+
+        return (new ChecklistAssigneeOverrideResource($override))->response()->setStatusCode(201);
     }
 }
