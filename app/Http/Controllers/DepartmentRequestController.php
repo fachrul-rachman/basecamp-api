@@ -21,7 +21,8 @@ class DepartmentRequestController extends Controller
         $this->authorize('viewAny', DepartmentRequest::class);
 
         $actor = $request->user();
-        $query = DepartmentRequest::query();
+        $query = DepartmentRequest::query()
+            ->with(['ownerDepartment', 'targetDepartment', 'targetManager', 'assignedPic', 'task']);
 
         if (! $actor->hasAnyRole([Role::ADMIN, Role::DIRECTOR, Role::ISO])) {
             $departmentIds = $actor->departments->pluck('id');
@@ -53,6 +54,8 @@ class DepartmentRequestController extends Controller
     {
         $this->authorize('view', $departmentRequest);
 
+        $departmentRequest->load(['ownerDepartment', 'targetDepartment', 'targetManager', 'assignedPic', 'task']);
+
         return new DepartmentRequestResource($departmentRequest);
     }
 
@@ -62,7 +65,7 @@ class DepartmentRequestController extends Controller
 
         $departmentRequest = $this->departmentRequests->assign($request->user(), $departmentRequest, $pic);
 
-        return new DepartmentRequestResource($departmentRequest);
+        return new DepartmentRequestResource($departmentRequest->load(['ownerDepartment', 'targetDepartment', 'targetManager', 'assignedPic', 'task']));
     }
 
     public function reject(RejectDepartmentRequestRequest $request, DepartmentRequest $departmentRequest)
@@ -71,7 +74,7 @@ class DepartmentRequestController extends Controller
             $request->user(), $departmentRequest, $request->validated('reason')
         );
 
-        return new DepartmentRequestResource($departmentRequest);
+        return new DepartmentRequestResource($departmentRequest->load(['ownerDepartment', 'targetDepartment', 'targetManager', 'assignedPic', 'task']));
     }
 
     public function reassign(ReassignDepartmentRequestRequest $request, DepartmentRequest $departmentRequest)
@@ -82,6 +85,6 @@ class DepartmentRequestController extends Controller
             $request->user(), $departmentRequest, $pic, $request->validated('reason')
         );
 
-        return new DepartmentRequestResource($departmentRequest);
+        return new DepartmentRequestResource($departmentRequest->load(['ownerDepartment', 'targetDepartment', 'targetManager', 'assignedPic', 'task']));
     }
 }
