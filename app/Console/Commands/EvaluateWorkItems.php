@@ -32,6 +32,13 @@ class EvaluateWorkItems extends Command
             ->whereNotNull('failure_at')
             ->where('failure_at', '<=', $now)
             ->whereNotIn('execution_status', WorkItem::TERMINAL_STATUSES)
+            // An active reopen deliberately leaves failure_at in the past
+            // (the original fact is never rewritten) and unlocks
+            // execution_status back to in_progress — without this
+            // exclusion, the very next run would immediately re-fail a
+            // work item that was just reopened. WorkReopen expiry has its
+            // own correct handling below.
+            ->whereDoesntHave('reopen', fn ($q) => $q->whereNull('completed_at'))
             ->get();
 
         foreach ($newlyFailed as $item) {
