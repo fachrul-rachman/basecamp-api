@@ -59,6 +59,50 @@ test('pic only sees their own department, not others', function () {
     expect($ids->all())->toEqual([$ownDept->id]);
 });
 
+test('manager without scope=all only sees their own department', function () {
+    $ownDept = Department::factory()->create();
+    Department::factory()->create();
+
+    $manager = makeUserWithRoles([Role::MANAGER]);
+    $manager->departments()->attach($ownDept->id);
+
+    $response = $this->actingAs($manager, 'sanctum')->getJson('/api/v1/departments');
+
+    $response->assertOk();
+    $ids = collect($response->json('data'))->pluck('id');
+    expect($ids->all())->toEqual([$ownDept->id]);
+});
+
+test('manager with scope=all sees every active department, not just their own', function () {
+    $ownDept = Department::factory()->create();
+    $otherActiveDept = Department::factory()->create();
+    $otherInactiveDept = Department::factory()->create(['is_active' => false]);
+
+    $manager = makeUserWithRoles([Role::MANAGER]);
+    $manager->departments()->attach($ownDept->id);
+
+    $response = $this->actingAs($manager, 'sanctum')->getJson('/api/v1/departments?scope=all');
+
+    $response->assertOk();
+    $ids = collect($response->json('data'))->pluck('id');
+    expect($ids->all())->toContain($ownDept->id, $otherActiveDept->id);
+    expect($ids->all())->not->toContain($otherInactiveDept->id);
+});
+
+test('pic cannot use scope=all to see departments outside their own', function () {
+    $ownDept = Department::factory()->create();
+    Department::factory()->create();
+
+    $pic = makeUserWithRoles([Role::PIC]);
+    $pic->departments()->attach($ownDept->id);
+
+    $response = $this->actingAs($pic, 'sanctum')->getJson('/api/v1/departments?scope=all');
+
+    $response->assertOk();
+    $ids = collect($response->json('data'))->pluck('id');
+    expect($ids->all())->toEqual([$ownDept->id]);
+});
+
 test('admin can update department members with a primary flag', function () {
     $admin = makeUserWithRoles([Role::ADMIN]);
     $department = Department::factory()->create();

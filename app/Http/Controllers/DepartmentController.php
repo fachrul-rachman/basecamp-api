@@ -23,12 +23,20 @@ class DepartmentController extends Controller
         $actor = $request->user();
         $query = Department::query();
 
-        if (! $actor->hasAnyRole([Role::ADMIN, Role::DIRECTOR, Role::ISO])) {
+        // scope=all lets a Manager see the full department directory (name/code
+        // only, via DepartmentResource) so they can pick a cross-department
+        // target on the checklist form — members/SLA management stay guarded by
+        // their own endpoints and policies, unaffected by this.
+        $managerRequestedAllScope = $request->query('scope') === 'all' && $actor->hasRole(Role::MANAGER);
+
+        if (! $managerRequestedAllScope && ! $actor->hasAnyRole([Role::ADMIN, Role::DIRECTOR, Role::ISO])) {
             $query->whereHas('users', fn ($q) => $q->where('users.id', $actor->id));
         }
 
         if ($request->filled('active')) {
             $query->where('is_active', $request->boolean('active'));
+        } elseif ($managerRequestedAllScope) {
+            $query->where('is_active', true);
         }
 
         if ($request->filled('search')) {
