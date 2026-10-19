@@ -61,7 +61,7 @@ class WorkItemController extends Controller
             $query->where('assignee_id', $request->query('assignee'));
         }
 
-        return WorkItemResource::collection($query->with(['task', 'taskChecklist', 'submission.evidence'])->paginate());
+        return WorkItemResource::collection($query->with(['task', 'taskChecklist', 'submission.evidence', 'reopen'])->paginate());
     }
 
     public function today(Request $request)
@@ -89,14 +89,14 @@ class WorkItemController extends Controller
                     ->whereNotIn('execution_status', WorkItem::TERMINAL_STATUSES));
         });
 
-        return WorkItemResource::collection($query->with(['task', 'taskChecklist', 'submission.evidence'])->get());
+        return WorkItemResource::collection($query->with(['task', 'taskChecklist', 'submission.evidence', 'reopen'])->get());
     }
 
     public function show(Request $request, WorkItem $workItem)
     {
         $this->authorize('view', $workItem);
 
-        return new WorkItemResource($workItem->load(['task', 'taskChecklist', 'submission.evidence']));
+        return new WorkItemResource($workItem->load(['task', 'taskChecklist', 'submission.evidence', 'reopen']));
     }
 
     public function storeSubmission(StoreWorkItemSubmissionRequest $request, WorkItem $workItem)
@@ -108,7 +108,7 @@ class WorkItemController extends Controller
             $request->boolean('submit')
         );
 
-        return new WorkItemResource($workItem->fresh(['task', 'taskChecklist', 'submission.evidence']));
+        return new WorkItemResource($workItem->fresh(['task', 'taskChecklist', 'submission.evidence', 'reopen']));
     }
 
     public function storeEvidence(StoreWorkItemEvidenceRequest $request, WorkItem $workItem)
@@ -158,7 +158,7 @@ class WorkItemController extends Controller
 
         $workItem = $this->assignments->reassign($request->user(), $workItem, $pic, $request->validated('reason'));
 
-        return new WorkItemResource($workItem->load(['task', 'taskChecklist']));
+        return new WorkItemResource($workItem->load(['task', 'taskChecklist', 'reopen']));
     }
 
     private function scopedQuery(Request $request): Builder

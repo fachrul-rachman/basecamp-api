@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\WorkItem;
+use App\Models\WorkReopen;
 use App\Support\EvidenceDisk;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -13,6 +14,7 @@ class WorkItemResource extends JsonResource
     public function toArray(Request $request): array
     {
         $now = Carbon::now();
+        $reopen = $this->reopen;
 
         return [
             'id' => $this->id,
@@ -25,8 +27,8 @@ class WorkItemResource extends JsonResource
             'available_at' => $this->available_at,
             'deadline_at' => $this->deadline_at,
             'failure_at' => $this->failure_at,
-            'can_submit' => $this->canSubmit($now),
-            'can_edit' => $this->canSubmit($now),
+            'can_submit' => $this->canSubmit($now, $reopen),
+            'can_edit' => $this->canSubmit($now, $reopen),
             'is_late' => $this->isLate($now),
             'required_evidence_count' => $this->required_evidence_count,
             'submitted_evidence_count' => $this->whenLoaded(
@@ -34,7 +36,11 @@ class WorkItemResource extends JsonResource
                 fn () => $this->submission?->relationLoaded('evidence') ? $this->submission->evidence->count() : 0,
                 0
             ),
-            'reopen' => null,
+            'reopen' => $reopen ? [
+                'deadline_at' => $reopen->deadline_at,
+                'completed_at' => $reopen->completed_at,
+                'result' => $reopen->result,
+            ] : null,
             'assignee_id' => $this->assignee_id,
             'submission' => $this->whenLoaded('submission', fn () => $this->submission ? [
                 'id' => $this->submission->id,
@@ -90,7 +96,7 @@ class WorkItemResource extends JsonResource
         return null;
     }
 
-    private function canSubmit(Carbon $now): bool
+    private function canSubmit(Carbon $now, ?WorkReopen $reopen): bool
     {
         if (in_array($this->execution_status, WorkItem::TERMINAL_STATUSES, true)) {
             return false;
@@ -100,7 +106,11 @@ class WorkItemResource extends JsonResource
             return false;
         }
 
-        if ($this->failure_at && $now->gte($this->failure_at)) {
+        // Same boundary SubmissionService enforces: an active reopen replaces
+        // the original failure boundary, which has already passed by then.
+        $boundary = $reopen && ! $reopen->completed_at ? $reopen->deadline_at : $this->failure_at;
+
+        if ($boundary && $now->gte($boundary)) {
             return false;
         }
 
